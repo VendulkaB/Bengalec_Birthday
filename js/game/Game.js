@@ -111,11 +111,10 @@ class Game {
 
     resizeCanvas() {
         const container = document.getElementById('gameContainer');
-        this.canvas.width = container.clientWidth;
-        this.canvas.height = container.clientHeight;
+        this.canvas.width = Math.min(container.clientWidth, 800); // Set a maximum width
+        this.canvas.height = Math.min(container.clientHeight, 600); // Set a maximum height
         this.scale = this.canvas.width / 800;
-    }
-
+    }    
     setupGame() {
         this.isRunning = false;
         this.isWinning = false;
@@ -207,11 +206,43 @@ class Game {
         this.isMouseControl = false;
 
         if (this.isTouchDevice) {
-            const mobileControls = document.getElementById('mobileControls');
-            if (mobileControls) mobileControls.style.display = 'flex';
+            this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this), false);
+            this.canvas.addEventListener('touchmove', this.handleTouchMove.bind(this), false);
+            this.canvas.addEventListener('touchend', this.handleTouchEnd.bind(this), false);
         }
 
         this.mouseControl = document.getElementById('mouseControl');
+    }
+
+    handleTouchStart(e) {
+        const touch = e.touches[0];
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const touchX = touch.clientX - canvasRect.left;
+
+        if (touchX < this.canvas.width / 2) {
+            this.player.moveLeft = true;
+        } else {
+            this.player.moveRight = true;
+        }
+    }
+
+    handleTouchMove(e) {
+        const touch = e.touches[0];
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const touchX = touch.clientX - canvasRect.left;
+
+        if (touchX < this.canvas.width / 2) {
+            this.player.moveLeft = true;
+            this.player.moveRight = false;
+        } else {
+            this.player.moveLeft = false;
+            this.player.moveRight = true;
+        }
+    }
+
+    handleTouchEnd() {
+        this.player.moveLeft = false;
+        this.player.moveRight = false;
     }
 
     setupEventListeners() {
