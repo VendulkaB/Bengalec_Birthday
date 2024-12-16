@@ -114,7 +114,8 @@ class Game {
         this.canvas.width = Math.min(container.clientWidth, 800); // Set a maximum width
         this.canvas.height = Math.min(container.clientHeight, 600); // Set a maximum height
         this.scale = this.canvas.width / 800;
-    }    
+    }
+
     setupGame() {
         this.isRunning = false;
         this.isWinning = false;
@@ -130,7 +131,7 @@ class Game {
         this.lastTime = 0;
     }
 
-    setupAudio() {
+    async setupAudio() {
         this.audioConfig = {
             isMuted: false,
             volume: 0.7,
@@ -151,24 +152,34 @@ class Game {
         this.f1Theme.loop = true;
         this.racingMusic.loop = true;
 
-        // Start F1 theme immediately for intro page
-        this.f1Theme.play().catch(() => {
-            console.log('Auto-play failed, waiting for user interaction');
-            document.addEventListener('click', () => {
-                if (!this.hasPlayedIntro) {
-                    this.f1Theme.play();
-                    this.hasPlayedIntro = true;
-                }
-            }, { once: true });
-        });
+        try {
+            await Promise.all([
+                this.loadAudio(this.f1Theme),
+                this.loadAudio(this.racingMusic),
+                this.loadAudio(this.victoryMusic)
+            ]);
 
-        this.setupAudioControls();
+            // Start F1 theme immediately for intro page
+            this.f1Theme.play().catch(() => {
+                console.log('Auto-play failed, waiting for user interaction');
+                document.addEventListener('click', () => {
+                    if (!this.hasPlayedIntro) {
+                        this.f1Theme.play();
+                        this.hasPlayedIntro = true;
+                    }
+                }, { once: true });
+            });
+
+            this.setupAudioControls();
+        } catch (error) {
+            console.error('Error loading audio:', error);
+        }
     }
 
     loadAudio(audio) {
         return new Promise((resolve, reject) => {
             audio.addEventListener('canplaythrough', resolve, { once: true });
-            audio.addEventListener('error', reject);
+            audio.addEventListener('error', reject, { once: true });
             audio.load();
         });
     }
@@ -187,12 +198,12 @@ class Game {
                 });
             });
         }
-
+    
         if (volumeSlider) {
             volumeSlider.addEventListener('input', (e) => {
                 const baseVolume = e.target.value / 100;
                 this.audioConfig.volume = baseVolume;
-
+    
                 // Adjust volumes for different tracks
                 this.f1Theme.volume = baseVolume * 0.65;
                 this.racingMusic.volume = baseVolume * 0.75;
@@ -200,37 +211,49 @@ class Game {
             });
         }
     }
-
+    
+        if (volumeSlider) {
+            volumeSlider.addEventListener('input', (e) => {
+                const baseVolume = e.target.value / 100;
+                this.audioConfig.volume = baseVolume;
+    
+                // Adjust volumes for different tracks
+                this.f1Theme.volume = baseVolume * 0.65;
+                this.racingMusic.volume = baseVolume * 0.75;
+                this.victoryMusic.volume = baseVolume * 0.8;
+            });
+        }
+    
     setupControls() {
         this.isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
         this.isMouseControl = false;
-
+    
         if (this.isTouchDevice) {
             this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this), false);
             this.canvas.addEventListener('touchmove', this.handleTouchMove.bind(this), false);
             this.canvas.addEventListener('touchend', this.handleTouchEnd.bind(this), false);
         }
-
+    
         this.mouseControl = document.getElementById('mouseControl');
     }
-
+    
     handleTouchStart(e) {
         const touch = e.touches[0];
         const canvasRect = this.canvas.getBoundingClientRect();
         const touchX = touch.clientX - canvasRect.left;
-
+    
         if (touchX < this.canvas.width / 2) {
             this.player.moveLeft = true;
         } else {
             this.player.moveRight = true;
         }
     }
-
+    
     handleTouchMove(e) {
         const touch = e.touches[0];
         const canvasRect = this.canvas.getBoundingClientRect();
         const touchX = touch.clientX - canvasRect.left;
-
+    
         if (touchX < this.canvas.width / 2) {
             this.player.moveLeft = true;
             this.player.moveRight = false;
@@ -239,30 +262,30 @@ class Game {
             this.player.moveRight = true;
         }
     }
-
+    
     handleTouchEnd() {
         this.player.moveLeft = false;
         this.player.moveRight = false;
     }
-
+    
     setupEventListeners() {
         // Start button
         const startButton = document.getElementById('startButton');
         if (startButton) {
             startButton.addEventListener('click', () => this.startGame());
         }
-
+    
         // Keyboard controls
         document.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowLeft') this.player.moveLeft = true;
             if (e.key === 'ArrowRight') this.player.moveRight = true;
         });
-
+    
         document.addEventListener('keyup', (e) => {
             if (e.key === 'ArrowLeft') this.player.moveLeft = false;
             if (e.key === 'ArrowRight') this.player.moveRight = false;
         });
-
+    
         // Mouse controls
         if (this.mouseControl) {
             this.mouseControl.addEventListener('mousemove', (e) => {
@@ -273,31 +296,31 @@ class Game {
                 }
             });
         }
-
+    
         // Mobile touch controls
         const leftButton = document.getElementById('leftButton');
         const rightButton = document.getElementById('rightButton');
-
+    
         if (leftButton && rightButton) {
             ['touchstart', 'mousedown'].forEach(eventType => {
                 leftButton.addEventListener(eventType, () => this.player.moveLeft = true);
                 rightButton.addEventListener(eventType, () => this.player.moveRight = true);
             });
-
+    
             ['touchend', 'mouseup'].forEach(eventType => {
                 leftButton.addEventListener(eventType, () => this.player.moveLeft = false);
                 rightButton.addEventListener(eventType, () => this.player.moveRight = false);
             });
         }
     }
-
+    
     async fadeOut(audio) {
         if (!audio || audio.paused) return;
         
         const fadeInterval = 50;
         const steps = this.audioConfig.fadeTime / fadeInterval;
         const volumeStep = audio.volume / steps;
-
+    
         return new Promise(resolve => {
             const fade = setInterval(() => {
                 if (audio.volume > volumeStep) {
@@ -312,7 +335,7 @@ class Game {
             }, fadeInterval);
         });
     }
-
+    
     async fadeIn(audio) {
         if (!audio) return;
         
@@ -322,7 +345,7 @@ class Game {
         const fadeInterval = 50;
         const steps = this.audioConfig.fadeTime / fadeInterval;
         const volumeStep = this.audioConfig.volume / steps;
-
+    
         return new Promise(resolve => {
             const fade = setInterval(() => {
                 if (audio.volume < this.audioConfig.volume - volumeStep) {
@@ -335,14 +358,14 @@ class Game {
             }, fadeInterval);
         });
     }
-
+    
     async playWithFade(newTrack, currentTrack = null) {
         if (currentTrack) {
             await this.fadeOut(currentTrack);
         }
         await this.fadeIn(newTrack);
     }
-
+    
     async startGame() {
         console.log('Starting game...');
         
@@ -363,15 +386,18 @@ class Game {
         `;
         loadingScreen.textContent = 'Loading...';
         document.getElementById('gameContainer').appendChild(loadingScreen);
-
+    
         try {
-            // Switch from F1 theme to racing music
-            await this.playWithFade(this.racingMusic, this.f1Theme);
+            // Stop F1 theme before starting the racing music
+            await this.fadeOut(this.f1Theme);
+    
+            // Switch to racing music
+            await this.playWithFade(this.racingMusic);
             
             this.isRunning = true;
             this.isWinning = false;
             this.score = 0;
-            this.gameSpeed = 1;
+            this.gameSpeed = 1.2;
             this.obstacles = [];
             this.spawnTimer = 0;
             
@@ -390,61 +416,61 @@ class Game {
             loadingScreen.textContent = 'Error loading game. Please refresh.';
         }
     }
-
+    
     update(timestamp) {
         if (!this.lastTime) this.lastTime = timestamp;
         const deltaTime = timestamp - this.lastTime;
         this.lastTime = timestamp;
-
+    
         if (!this.isRunning) return;
-
+    
         this.player.update();
         this.gameSpeed = 1.2 + (this.score / 40);
-
+    
         this.spawnTimer += deltaTime;
         if (this.spawnTimer > this.spawnInterval) {
             const carsToSpawn = Math.random() < 0.4 ? 2 : 1;
-            for(let i = 0; i < carsToSpawn; i++) {
+            for (let i = 0; i < carsToSpawn; i++) {
                 this.obstacles.push(new Obstacle(this));
             }
             this.spawnTimer = 0;
             this.spawnInterval = Math.max(600, 1200 - (this.score * 15));
         }
-
+    
         this.obstacles = this.obstacles.filter(obstacle => {
             const isOffscreen = obstacle.update();
             if (isOffscreen) {
                 this.score += 1;
                 this.updateUI();
-                
+    
                 if (this.score >= this.targetScore && !this.isWinning) {
                     this.showBirthdayCelebration();
                 }
             }
             return !isOffscreen;
         });
-
+    
         if (!this.isWinning) {
             this.checkCollisions();
         }
     }
-
+    
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        
+    
         this.drawRoad();
         this.obstacles.forEach(obstacle => obstacle.draw(this.ctx));
         this.player.draw(this.ctx);
         this.drawUI();
     }
-
+    
     drawRoad() {
         this.ctx.fillStyle = '#333333';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        
+    
         this.ctx.fillStyle = '#FFFFFF';
         const laneWidth = this.canvas.width / 3;
-        
+    
         for (let i = 1; i < 3; i++) {
             const x = laneWidth * i;
             for (let y = -this.canvas.height + (this.lastTime * 0.1 % 50); y < this.canvas.height; y += 50) {
@@ -457,31 +483,31 @@ class Game {
             }
         }
     }
-
+    
     drawUI() {
         this.ctx.fillStyle = '#FFFFFF';
         this.ctx.font = `${20 * this.scale}px Arial`;
         this.ctx.fillText(`Speed: ${Math.floor(this.gameSpeed * 100)} km/h`, 20 * this.scale, 60 * this.scale);
     }
-
+    
     updateUI() {
         const scoreDisplay = document.getElementById('scoreDisplay');
         const speedDisplay = document.getElementById('speedDisplay');
-        
+    
         if (scoreDisplay) scoreDisplay.textContent = `${this.score}/${this.targetScore}`;
         if (speedDisplay) speedDisplay.textContent = Math.floor(this.gameSpeed * 100);
     }
-
+    
     async showBirthdayCelebration() {
         this.isWinning = true;
         this.isRunning = false;
         this.fireworks = [];
-
+    
         // Switch to victory music
         await this.fadeOut(this.racingMusic);
         await new Promise(resolve => setTimeout(resolve, 500));
         this.victoryMusic.play().catch(e => console.log('Audio play failed:', e));
-
+    
         const celebration = document.createElement('div');
         celebration.style.cssText = `
             position: absolute;
@@ -500,7 +526,7 @@ class Game {
             z-index: 1000;
             animation: fadeIn 1s ease-in;
         `;
-
+    
         // Create canvas for fireworks
         const fireworksCanvas = document.createElement('canvas');
         fireworksCanvas.style.cssText = `
@@ -513,29 +539,29 @@ class Game {
         `;
         fireworksCanvas.width = this.canvas.width;
         fireworksCanvas.height = this.canvas.height;
-
+    
         celebration.appendChild(fireworksCanvas);
         const fwCtx = fireworksCanvas.getContext('2d');
-
+    
         // Animation function for fireworks
         const animateFireworks = () => {
             if (!this.isWinning) return;
-
+    
             fwCtx.fillStyle = 'rgba(0, 0, 0, 0.1)';
             fwCtx.fillRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
-
+    
             if (Math.random() < 0.05) {
                 this.fireworks.push(new Firework(fireworksCanvas.width, fireworksCanvas.height));
             }
-
+    
             this.fireworks.forEach(firework => {
                 firework.update();
                 firework.draw(fwCtx);
             });
-
+    
             requestAnimationFrame(animateFireworks);
         };
-
+    
         // Add celebration content
         const content = document.createElement('div');
         content.innerHTML = `
@@ -555,13 +581,13 @@ class Game {
                 </button>
             </div>
         `;
-
+    
         celebration.appendChild(content);
         document.getElementById('gameContainer').appendChild(celebration);
-
+    
         // Start fireworks animation
         animateFireworks();
-
+    
         const celebrationButton = document.getElementById('celebrationButton');
         if (celebrationButton) {
             celebrationButton.addEventListener('click', () => {
@@ -576,7 +602,7 @@ class Game {
             });
         }
     }
-
+    
     checkCollisions() {
         for (let obstacle of this.obstacles) {
             if (this.detectCollision(this.player, obstacle)) {
@@ -585,7 +611,7 @@ class Game {
             }
         }
     }
-
+    
     detectCollision(a, b) {
         return (
             a.x < b.x + b.width &&
@@ -594,7 +620,7 @@ class Game {
             a.y + a.height > b.y
         );
     }
-
+    
     gameLoop(timestamp) {
         if (this.isRunning) {
             this.update(timestamp);
@@ -602,17 +628,17 @@ class Game {
             requestAnimationFrame((time) => this.gameLoop(time));
         }
     }
-
+    
     gameOver() {
         if (!this.isWinning) {
             this.isRunning = false;
-            
+    
             // Stop racing music and switch back to F1 theme
             this.racingMusic.pause();
             this.racingMusic.currentTime = 0;
             this.f1Theme.currentTime = 0;
             this.f1Theme.play().catch(e => console.log('Audio play failed:', e));
-
+    
             const startScreen = document.getElementById('startScreen');
             if (startScreen) {
                 startScreen.classList.remove('hidden');
