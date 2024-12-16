@@ -124,7 +124,7 @@ class Game {
         this.powerups = [];
         this.score = 0;
         this.targetScore = 38;
-        this.gameSpeed = 1,2;
+        this.gameSpeed = 1.2;
         this.spawnTimer = 0;
         this.spawnInterval = 1200;
         this.lastTime = 0;
@@ -399,7 +399,7 @@ class Game {
         if (!this.isRunning) return;
 
         this.player.update();
-        this.gameSpeed = 1,2 + (this.score / 40);
+        this.gameSpeed = 1.2 + (this.score / 40);
 
         this.spawnTimer += deltaTime;
         if (this.spawnTimer > this.spawnInterval) {
