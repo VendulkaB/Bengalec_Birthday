@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>For the Legend: Senna Birthday Special for Maťku</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="gameUI">
+            <div class="stats">
+                <div class="stats-group">
+                    <div class="stat-item">🏆 Score: <span id="scoreDisplay">0/38</span></div>
+                    <div class="stat-item">⚡ Speed: <span id="speedDisplay">0</span> km/h</div>
+                    <div class="stat-item">
+                        🔊 Volume: 
+                        <div class="volume-slider">
+                            <input type="range" id="volumeSlider" min="0" max="100" value="70">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="startScreen">
+            <div class="game-logo"></div>
+            <h1 class="game-title">For the Legend:<br>Senna Birthday Special<br>for Maťku</h1>
+            <div class="quote">
+                "I am not designed to come second or third. 
+                I am designed to win." - Ayrton Senna
+            </div>
+            <button class="start-button" id="startButton">Start Race</button>
+        </div>
+
+        <div id="mouseControl" class="hidden"></div>
+
+        <div id="mobileControls">
+            <div class="control-button" id="leftButton">←</div>
+            <div class="control-button" id="rightButton">→</div>
+        </div>
+    </div>
+
+    <!-- Load game files -->
+    <script src="js/game/Player.js"></script>
+    <script src="js/game/Obstacle.js"></script>
+    <script src="js/game/PowerUp.js"></script>
+    <script src="js/game/Game.js"></script>
+    <script>
+        window.addEventListener('load', () => {
+            console.log('Game initializing...');
+            try {
+                const game = new Game();
+                console.log('Game initialized successfully');
+            } catch (error) {
+                console.error('Game initialization failed:', error);
+            }
+        });
+    </script>
+</body>
+</html>
