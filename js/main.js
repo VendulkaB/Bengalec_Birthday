@@ -1,6 +1,3 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // Initialize game
-    const game = new Game();
     
     // Add background music (optional)
     const bgMusic = new Audio('assets/sounds/background.mp3');
@@ -37,7 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('instructionsButton').addEventListener('click', () => {
         showInstructions();
     });
-});
 
 function showInstructions() {
     const instructions = `
