@@ -5,19 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>For the Legend: Senna Birthday Special</title>
+    <title>For the Legend: Senna Birthday Special pro Maťku</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" type="image/png" href="images/favicon.png">
 </head>
 <body>
     <div id="gameContainer">
         <canvas id="gameCanvas"></canvas>
-        
+       
         <div id="gameUI">
             <div class="stats">
                 <div class="stats-group">
                     <div class="stat-item">🏆 <span id="scoreDisplay">0/38</span></div>
                     <div class="stat-item">⚡ <span id="speedDisplay">0</span> km/h</div>
-                    <div class="stat-item">
+                    <div class="stat-item audio-controls">
                         <button id="muteButton" class="audio-btn" aria-label="Toggle sound">🔊</button>
                         <div class="volume-slider">
                             <input type="range" id="volumeSlider" min="0" max="100" value="70" aria-label="Volume control">
@@ -29,9 +30,9 @@
 
         <div id="startScreen">
             <div class="game-logo"></div>
-            <h1 class="game-title">For the Legend:<br>Senna Birthday Special</h1>
+            <h1 class="game-title">For the Legend:<br>Senna Birthday Special<br>for Maťku</h1>
             <div class="quote">
-                "I am not designed to come second or third. 
+                "I am not designed to come second or third.
                 I am designed to win." - Ayrton Senna
             </div>
             <button class="start-button" id="startButton">Start Race</button>
@@ -44,18 +45,36 @@
         // Prevent default touch behavior
         document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
         
+        let game; // Keep game reference accessible
+
         // Wait for everything to load
         window.addEventListener('load', async () => {
             console.log('Game initializing...');
             try {
-                const game = new Game();
+                game = new Game();
                 
-                // Handle iOS audio context
-                document.addEventListener('touchstart', () => {
-                    if (game.f1Theme) {
-                        game.f1Theme.play().catch(e => console.log('Audio play failed:', e));
-                    }
-                }, { once: true });
+                // For mobile devices
+                if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                    // Try to play on first touch
+                    document.addEventListener('touchstart', () => {
+                        if (game && !game.hasPlayedIntro) {
+                            console.log('Attempting to play intro music on mobile...');
+                            game.playIntroMusic();
+                        }
+                    }, { once: true });
+                }
+                
+                // Add click listener for start button
+                const startButton = document.getElementById('startButton');
+                if (startButton) {
+                    startButton.addEventListener('click', () => {
+                        console.log('Start button clicked');
+                        // Try to play intro music if it hasn't started yet
+                        if (game && !game.hasPlayedIntro) {
+                            game.playIntroMusic();
+                        }
+                    });
+                }
                 
                 console.log('Game initialized successfully');
             } catch (error) {
@@ -63,5 +82,3 @@
             }
         });
     </script>
-</body>
-</html>
