@@ -16,7 +16,7 @@
                     <div class="stat-item">🏆 Score: <span id="scoreDisplay">0/38</span></div>
                     <div class="stat-item">⚡ Speed: <span id="speedDisplay">0</span> km/h</div>
                     <div class="stat-item">
-                        🔊 Volume: 
+                        <button id="muteButton" class="audio-btn">🔇</button>
                         <div class="volume-slider">
                             <input type="range" id="volumeSlider" min="0" max="100" value="70">
                         </div>
@@ -43,16 +43,20 @@
         </div>
     </div>
 
-    <!-- Load game files -->
-    <script src="js/game/Player.js"></script>
-    <script src="js/game/Obstacle.js"></script>
-    <script src="js/game/PowerUp.js"></script>
-    <script src="js/game/Game.js"></script>
-    <script>
+    <!-- Load game files as modules -->
+    <script type="module">
+        import Game from './js/game/Game.js';
+
         window.addEventListener('load', () => {
             console.log('Game initializing...');
             try {
                 const game = new Game();
+                const startButton = document.getElementById('startButton');
+                startButton.addEventListener('click', () => {
+                    console.log('Start button clicked');
+                    game.f1Theme.play().catch(e => console.log('Audio play failed:', e));
+                    game.startGame();
+                });
                 console.log('Game initialized successfully');
             } catch (error) {
                 console.error('Game initialization failed:', error);
