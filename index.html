@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>For the Legend: Senna Birthday Special for Maťku</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>For the Legend: Senna Birthday Special</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -13,12 +15,12 @@
         <div id="gameUI">
             <div class="stats">
                 <div class="stats-group">
-                    <div class="stat-item">🏆 Score: <span id="scoreDisplay">0/38</span></div>
-                    <div class="stat-item">⚡ Speed: <span id="speedDisplay">0</span> km/h</div>
+                    <div class="stat-item">🏆 <span id="scoreDisplay">0/38</span></div>
+                    <div class="stat-item">⚡ <span id="speedDisplay">0</span> km/h</div>
                     <div class="stat-item">
-                        <button id="muteButton" class="audio-btn">🔇</button>
+                        <button id="muteButton" class="audio-btn" aria-label="Toggle sound">🔊</button>
                         <div class="volume-slider">
-                            <input type="range" id="volumeSlider" min="0" max="100" value="70">
+                            <input type="range" id="volumeSlider" min="0" max="100" value="70" aria-label="Volume control">
                         </div>
                     </div>
                 </div>
@@ -27,36 +29,34 @@
 
         <div id="startScreen">
             <div class="game-logo"></div>
-            <h1 class="game-title">For the Legend:<br>Senna Birthday Special<br>for Maťku</h1>
+            <h1 class="game-title">For the Legend:<br>Senna Birthday Special</h1>
             <div class="quote">
                 "I am not designed to come second or third. 
                 I am designed to win." - Ayrton Senna
             </div>
             <button class="start-button" id="startButton">Start Race</button>
         </div>
-
-        <div id="mouseControl" class="hidden"></div>
-
-        <div id="mobileControls">
-            <div class="control-button" id="leftButton">←</div>
-            <div class="control-button" id="rightButton">→</div>
-        </div>
     </div>
 
-    <!-- Load game files as modules -->
     <script type="module">
         import Game from './js/game/Game.js';
 
-        window.addEventListener('load', () => {
+        // Prevent default touch behavior
+        document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+        
+        // Wait for everything to load
+        window.addEventListener('load', async () => {
             console.log('Game initializing...');
             try {
                 const game = new Game();
-                const startButton = document.getElementById('startButton');
-                startButton.addEventListener('click', () => {
-                    console.log('Start button clicked');
-                    game.f1Theme.play().catch(e => console.log('Audio play failed:', e));
-                    game.startGame();
-                });
+                
+                // Handle iOS audio context
+                document.addEventListener('touchstart', () => {
+                    if (game.f1Theme) {
+                        game.f1Theme.play().catch(e => console.log('Audio play failed:', e));
+                    }
+                }, { once: true });
+                
                 console.log('Game initialized successfully');
             } catch (error) {
                 console.error('Game initialization failed:', error);
