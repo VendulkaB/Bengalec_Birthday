@@ -103,3 +103,5 @@ class Obstacle {
                      this.width * 0.1, this.height * 0.15);
     }
 }
+
+export default Obstacle; // Ensure Obstacle is exported as default
