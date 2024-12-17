@@ -90,3 +90,5 @@ class Player {
                      this.width * 0.1, this.height * 0.15);
     }
 }
+
+export default Player; // Ensure Player is exported as default
