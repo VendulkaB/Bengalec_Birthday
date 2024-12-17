@@ -7,12 +7,13 @@
     user-select: none;
     -webkit-user-select: none;
     -moz-user-select: none;
+    touch-action: manipulation;
 }
 
 body {
     margin: 0;
-    min-height: 100vh;
-    min-height: -webkit-fill-available; /* iOS fix */
+    height: 100vh;
+    height: -webkit-fill-available;
     background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
     display: flex;
     justify-content: center;
@@ -26,13 +27,15 @@ body {
     background-position: center;
     background-attachment: fixed;
     overscroll-behavior: none;
-    touch-action: none;
+    position: fixed;
+    width: 100%;
 }
 
-/* Prevent iOS rubber band effect */
 html {
     height: -webkit-fill-available;
     overflow: hidden;
+    position: fixed;
+    width: 100%;
 }
 
 #gameContainer {
@@ -40,7 +43,7 @@ html {
     width: 100%;
     max-width: 800px;
     aspect-ratio: 4/3;
-    margin: clamp(5px, 2vw, 20px);
+    margin: max(5px, min(2vw, 20px));
     border-radius: 15px;
     overflow: hidden;
     box-shadow: 0 0 50px rgba(255, 215, 0, 0.3);
@@ -61,29 +64,33 @@ html {
 
 #gameUI {
     position: absolute;
-    top: env(safe-area-inset-top, 0px);
+    top: max(env(safe-area-inset-top, 10px), 10px);
     left: 0;
     width: 100%;
-    padding: clamp(10px, 3vw, 20px);
+    padding: max(10px, min(3vw, 20px));
     z-index: 2;
 }
 
 .stats {
     display: flex;
-    justify-content: flex-start;
-    gap: clamp(5px, 2vw, 10px);
-    padding: clamp(5px, 2vw, 10px);
+    justify-content: center;
+    gap: 10px;
+    padding: 10px;
     background: rgba(0, 0, 0, 0.8);
     border-radius: 10px;
     border: 1px solid rgba(255, 215, 0, 0.3);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+    width: fit-content;
+    margin: 0 auto;
 }
 
 .stats-group {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
 .stat-item {
@@ -93,14 +100,15 @@ html {
     padding: 8px 12px;
     background: linear-gradient(45deg, rgba(255, 215, 0, 0.1), rgba(255, 0, 0, 0.1));
     border-radius: 8px;
-    font-size: clamp(12px, 3.5vw, 18px);
+    font-size: 14px;
     white-space: nowrap;
+    height: 36px;
 }
 
 .hidden {
     display: none !important;
 }
-/* Continue rest of your CSS with mobile optimizations... */
+
 #startScreen {
     position: absolute;
     top: 0;
@@ -113,7 +121,7 @@ html {
     align-items: center;
     background: rgba(0, 0, 0, 0.9);
     z-index: 3;
-    padding: clamp(10px, 4vw, 20px);
+    padding: max(20px, 4vw);
     background-image: 
         linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)),
         url('../images/senna-helmet.jpg');
@@ -124,7 +132,7 @@ html {
 .game-logo {
     width: min(150px, 30vw);
     height: min(150px, 30vw);
-    margin-bottom: clamp(10px, 3vw, 20px);
+    margin-bottom: max(10px, min(3vw, 20px));
     background-image: url('../images/senna-logo.png');
     background-size: contain;
     background-repeat: no-repeat;
@@ -134,7 +142,7 @@ html {
 .game-title {
     font-size: clamp(18px, 5vw, 32px);
     line-height: 1.3;
-    margin-bottom: clamp(10px, 3vw, 20px);
+    margin-bottom: max(10px, min(3vw, 20px));
     color: #FFD700;
     text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
     text-transform: uppercase;
@@ -149,19 +157,19 @@ html {
     font-style: italic;
     color: #ffffff;
     text-align: center;
-    margin: clamp(10px, 3vw, 20px) 0;
+    margin: max(10px, min(3vw, 20px)) 0;
     max-width: min(600px, 90vw);
     line-height: 1.6;
-    padding: clamp(10px, 3vw, 20px);
+    padding: max(10px, min(3vw, 20px));
     background: rgba(0, 0, 0, 0.7);
     border-radius: 10px;
     border: 1px solid rgba(255, 215, 0, 0.2);
-    font-size: clamp(14px, 3.5vw, 16px);
+    font-size: max(14px, min(3.5vw, 16px));
 }
 
 .start-button {
-    padding: clamp(10px, 3vw, 15px) clamp(20px, 5vw, 40px);
-    font-size: clamp(16px, 4vw, 24px);
+    padding: max(10px, min(3vw, 15px)) max(20px, min(5vw, 40px));
+    font-size: max(16px, min(4vw, 24px));
     background: linear-gradient(45deg, #FFD700, #FFA500);
     border: none;
     color: #000;
@@ -172,8 +180,8 @@ html {
     font-weight: bold;
     transition: all 0.3s ease;
     box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
-    min-height: 44px; /* iOS touch target */
-    min-width: 44px;  /* iOS touch target */
+    min-height: 44px;
+    min-width: 44px;
 }
 
 .start-button:hover {
@@ -186,59 +194,25 @@ html {
     transform: translateY(1px);
 }
 
-#mobileControls {
-    position: fixed;
-    bottom: max(env(safe-area-inset-bottom, 20px), 20px);
-    left: 0;
-    width: 100%;
-    display: none;
-    justify-content: space-between;
-    padding: 0 clamp(20px, 5vw, 40px);
-    z-index: 2;
-    pointer-events: auto;
-}
-
-.control-button {
-    width: clamp(60px, 15vw, 80px);
-    height: clamp(60px, 15vw, 80px);
-    background: rgba(255, 215, 0, 0.2);
-    border: 2px solid rgba(255, 215, 0, 0.5);
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: clamp(18px, 5vw, 24px);
-    color: #FFD700;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    touch-action: manipulation;
-    min-width: 44px;  /* iOS touch target */
-    min-height: 44px; /* iOS touch target */
-    -webkit-tap-highlight-color: transparent;
-}
-
 .audio-controls {
     display: flex;
     align-items: center;
-    gap: clamp(5px, 2vw, 10px);
-    padding: clamp(5px, 2vw, 10px);
-    background: linear-gradient(45deg, rgba(255, 215, 0, 0.1), rgba(255, 0, 0, 0.1));
-    border-radius: 8px;
-    border: 1px solid rgba(255, 215, 0, 0.2);
+    gap: 10px;
+    height: 36px;
 }
 
 .audio-btn {
     background: none;
     border: none;
     color: #FFD700;
-    font-size: clamp(16px, 4vw, 18px);
+    font-size: 14px;
     cursor: pointer;
-    padding: 5px;
+    padding: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 44px;
-    min-height: 44px;
+    min-width: 36px;
+    min-height: 36px;
     transition: transform 0.2s;
 }
 
@@ -251,21 +225,18 @@ html {
 }
 
 .volume-slider {
-    width: clamp(60px, 15vw, 80px);
-    display: none;
-}
-
-@media (min-width: 769px) {
-    .volume-slider {
-        display: block;
-    }
+    width: 80px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
 }
 
 .volume-slider input {
     width: 100%;
     height: 4px;
     -webkit-appearance: none;
-    appearance: none; /* Standard property */
+    appearance: none;
     background: rgba(255, 215, 0, 0.3);
     border-radius: 2px;
     outline: none;
@@ -273,9 +244,8 @@ html {
 
 .volume-slider input::-webkit-slider-thumb {
     -webkit-appearance: none;
-    appearance: none; /* Standard property */
-    width: clamp(12px, 3vw, 16px);
-    height: clamp(12px, 3vw, 16px);
+    width: 14px;
+    height: 14px;
     background: #FFD700;
     border-radius: 50%;
     cursor: pointer;
@@ -283,6 +253,47 @@ html {
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
+.volume-slider input::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: #FFD700;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.celebration {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #FFFFFF;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.celebration .game-title {
+    color: #FFD700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    margin-bottom: 20px;
+}
+
+.celebration p {
+    margin: 10px 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+#fireworksCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
 /* Animations */
 @keyframes fadeIn {
     from { opacity: 0; }
@@ -301,43 +312,74 @@ html {
 
 /* Mobile and Touch Device Optimizations */
 @media (max-width: 768px) {
-    #mobileControls {
-        display: flex;
-    }
-    
-    .stats {
-        flex-wrap: wrap;
-        justify-content: center;
+    .stats-group {
+        gap: 8px;
     }
     
     .stat-item {
-        flex: 0 1 auto;
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+    
+    .game-title {
+        font-size: max(18px, min(5vw, 24px));
+        padding: 0 10px;
+        text-align: center;
+    }
+    
+    .quote {
+        font-size: max(14px, min(3.5vw, 16px));
+        padding: 15px;
+        margin: 15px 0;
+    }
+    
+    #gameUI {
+        padding: 5px;
+    }
+}
+
+/* iOS Specific Fixes */
+@supports (-webkit-touch-callout: none) {
+    #gameContainer {
+        position: absolute;
+        height: 100%;
+        max-height: -webkit-fill-available;
+    }
+    
+    .volume-slider {
+        display: none;
+    }
+}
+
+/* Safe Area Insets for Notched Phones */
+@supports (padding: max(0px)) {
+    #gameUI {
+        padding-left: max(env(safe-area-inset-left), 10px);
+        padding-right: max(env(safe-area-inset-right), 10px);
+        padding-top: max(env(safe-area-inset-top), 10px);
+    }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: more) {
+    .stat-item {
+        background: rgba(255, 215, 0, 0.2);
+        border: 1px solid #FFD700;
+    }
+    
+    .start-button {
+        background: #FFD700;
+        border: 2px solid #000;
+    }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    .start-button {
+        transition: none;
     }
     
     .audio-btn {
-        padding: 8px;
-    }
-}
-
-/* iOS Specific */
-@supports (-webkit-touch-callout: none) {
-    body {
-        cursor: pointer; /* Enable mobile hover states */
-    }
-    
-    #gameContainer {
-        /* Prevent iOS scroll bounce */
-        position: fixed;
-        top: env(safe-area-inset-top);
-        bottom: env(safe-area-inset-bottom);
-        left: env(safe-area-inset-left);
-        right: env(safe-area-inset-right);
-    }
-}
-
-/* Hide volume slider on touch devices */
-@media (pointer: coarse) {
-    .volume-slider {
-        display: none;
+        transition: none;
     }
 }
