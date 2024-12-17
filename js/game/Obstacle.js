@@ -5,7 +5,7 @@ class Obstacle {
         this.height = 80 * game.scale;
         this.x = Math.random() * (game.canvas.width - this.width);
         this.y = -this.height;
-        this.speed = (3 + Math.random() * 2) * game.scale;
+        this.speed = (3 + Math.random() * 2) * game.scale * game.gameSpeed;
         this.team = this.getRandomTeam();
     }
 
@@ -104,4 +104,4 @@ class Obstacle {
     }
 }
 
-export default Obstacle; // Ensure Obstacle is exported as default
+export default Obstacle;
