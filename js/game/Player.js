@@ -91,4 +91,4 @@ class Player {
     }
 }
 
-export default Player; // Ensure Player is exported as default
+export default Player;
