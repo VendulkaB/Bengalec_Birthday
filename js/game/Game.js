@@ -168,6 +168,15 @@ class Game {
         this.spawnTimer = 0;
         this.spawnInterval = this.isMobile ? GAME_CONFIG.SPAWN_INTERVALS.MOBILE : GAME_CONFIG.SPAWN_INTERVALS.DESKTOP;
         this.lastTime = performance.now();
+        
+        // Force proper UI state on mobile
+        if (this.isMobile) {
+            const startScreen = document.getElementById('startScreen');
+            const mobileControls = document.getElementById('mobileControls');
+            if (startScreen) startScreen.classList.remove('hidden');
+            if (mobileControls) mobileControls.style.display = 'flex';
+        }
+        
         this.updateUI();
     }
 
@@ -366,7 +375,36 @@ loadAudio(audio) {
             this.f1Theme.play().catch(e => console.log('F1 theme play failed:', e));
         }
     }
+    stopAllMusic() {
+        // Helper method to stop all music tracks
+        const tracks = [this.promiseMeMusic, this.f1Theme, this.victoryMusic];
+        tracks.forEach(track => {
+            if (track) {
+                track.pause();
+                track.currentTime = 0;
+            }
+        });
+    }
 
+    cleanup() {
+        // Enhanced cleanup method
+        cancelAnimationFrame(this.animationFrameId);
+        
+        // Clean up celebration elements
+        const fireworksCanvas = document.getElementById('fireworksCanvas');
+        if (fireworksCanvas) fireworksCanvas.remove();
+        
+        const celebration = document.querySelector('.celebration-container');
+        if (celebration) celebration.remove();
+        
+        // Reset audio
+        this.stopAllMusic();
+        
+        // Reset game state
+        this.isWinning = false;
+        this.obstacles = [];
+        this.score = 0;
+    }
     // Update the playWithFade method to ensure clean transitions
     async playWithFade(newTrack, currentTrack = null) {
         if (currentTrack) {
@@ -483,7 +521,7 @@ loadAudio(audio) {
 
       // Fix the speed calculation in the update method
       // Update the speed calculation in the update method
-    update(deltaTime) {
+      update(deltaTime) {
         if (!this.isRunning) return;
 
         this.player.update();
@@ -497,10 +535,8 @@ loadAudio(audio) {
         if (this.spawnTimer > this.spawnInterval) {
             const carsToSpawn = Math.random() < 0.4 ? 2 : 1;
             for (let i = 0; i < carsToSpawn; i++) {
-                const obstacle = this.spawnObstacle();
-                if (obstacle) {
-                    this.obstacles.push(obstacle);
-                }
+                const obstacle = new Obstacle(this);  // Create obstacle directly
+                this.obstacles.push(obstacle);
             }
             this.spawnTimer = 0;
             this.spawnInterval = Math.max(
@@ -508,6 +544,7 @@ loadAudio(audio) {
                 this.spawnInterval - (this.score * GAME_CONFIG.DIFFICULTY_SCALING.SPAWN_INTERVAL_REDUCTION)
             );
         }
+
         // Update obstacles and check score
         this.obstacles = this.obstacles.filter(obstacle => {
             const isOffscreen = obstacle.update();
@@ -528,10 +565,6 @@ loadAudio(audio) {
 
         // Update UI with current speed
         this.updateUI();
-
-        if (!this.isWinning) {
-            this.checkCollisions();
-        }
     }
 
     draw() {
@@ -575,90 +608,137 @@ loadAudio(audio) {
         return;
     }
 
-    // Update showVictory method (audio part)
-    async showVictory() {
-        this.isWinning = true;
-        this.isRunning = false;
+// Update showVictory method (audio part)
 
-        // Switch from F1 theme to victory music
-        await this.fadeOut(this.f1Theme);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        await this.fadeIn(this.victoryMusic);
+async showVictory() {
+    this.isWinning = true;
+    this.isRunning = false;
 
-        const celebration = document.createElement('div');
-        celebration.className = 'celebration-container';
-        document.getElementById('gameContainer').appendChild(celebration);
+    // Stop game loop immediately
+    cancelAnimationFrame(this.animationFrameId);
 
-        const content = document.createElement('div');
-        content.className = 'celebration-content';
-        content.innerHTML = `
-            <div class="game-logo"></div>
-            <h1 class="celebration-title">🏆 Champion 🏆</h1>
-            <div class="celebration-text">
-                <p>Happy Birthday!</p>
-                <p>Just like Senna, you've achieved greatness!</p>
-                <p>Score: ${this.score}/${this.targetScore}</p>
-            </div>
-            <button class="start-button" id="celebrationButton">Race Again</button>
-        `;
-        celebration.appendChild(content);
+    // Clean up any existing celebration elements
+    const existingCelebration = document.querySelector('.celebration-container');
+    if (existingCelebration) existingCelebration.remove();
 
-    // Add specific styles directly to ensure visibility
-    const styles = document.createElement('style');
-    styles.textContent = `
-        .celebration-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85));
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .celebration-content {
-            text-align: center;
-            padding: 20px;
-            z-index: 1002;
-            background: rgba(0, 0, 0, 0.8);
-            border-radius: 15px;
-            border: 2px solid #FFD700;
-        }
-        .celebration-title {
+    // Switch audio
+    await this.fadeOut(this.f1Theme);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    await this.fadeIn(this.victoryMusic);
+
+    const gameContainer = document.getElementById('gameContainer');
+    const celebration = document.createElement('div');
+    celebration.className = 'celebration-container';
+
+    // Corrected image paths relative to js folder
+    celebration.style.cssText = `
+    background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)),
+                     url('images/senna-helmet.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+`;
+
+    // Create content container
+    const contentContainer = document.createElement('div');
+    contentContainer.style.cssText = `
+        position: relative;
+        z-index: 1002;
+        text-align: center;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.6);
+        border-radius: 15px;
+        border: 2px solid #FFD700;
+        max-width: 90%;
+        margin: auto;
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+    `;
+
+    // Corrected logo path relative to js folder
+    contentContainer.innerHTML = `
+        <div class="game-logo" style="
+            width: min(150px, 30vw);
+            height: min(150px, 30vw);
+            margin: 0 auto 20px auto;
+            background-image: url('images/senna-logo.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        "></div>
+        <h1 class="celebration-title" style="
             color: #FFD700;
             font-size: clamp(24px, 5vw, 36px);
             margin: 20px 0;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-        }
-        .celebration-text {
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);">
+            🏆 Champion 🏆
+        </h1>
+        <div class="celebration-text" style="
             color: #FFFFFF;
             font-size: clamp(16px, 4vw, 24px);
             margin: 20px 0;
-            line-height: 1.5;
-        }
-        .celebration-text p {
-            margin: 10px 0;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-        }
+            line-height: 1.5;">
+            <p>Happy Birthday!</p>
+            <p>Just like Senna, you've achieved greatness!</p>
+            <p>Score: ${this.score}/${this.targetScore}</p>
+        </div>
+        <button class="start-button" id="celebrationButton" style="
+            padding: clamp(10px, 3vw, 15px) clamp(20px, 5vw, 40px);
+            font-size: clamp(16px, 4vw, 24px);
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            border: none;
+            color: #000;
+            border-radius: 25px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: bold;
+            margin-top: 20px;
+            transition: all 0.3s ease;">
+            Race Again
+        </button>
     `;
-    document.head.appendChild(styles);
+
+    celebration.appendChild(contentContainer);
+
+    // Setup fireworks canvas
+    const fireworksCanvas = document.createElement('canvas');
+    fireworksCanvas.id = 'fireworksCanvas';
+    fireworksCanvas.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1000;
+    `;
+    celebration.appendChild(fireworksCanvas);
+    gameContainer.appendChild(celebration);
 
     const celebrationButton = document.getElementById('celebrationButton');
     if (celebrationButton) {
-        celebrationButton.addEventListener('click', () => {
+        celebrationButton.addEventListener('click', async () => {
             celebration.remove();
-            styles.remove();
+            this.cleanup();
             this.setupGame();
+            await this.fadeOut(this.victoryMusic);
+            this.f1Theme.currentTime = 0;
             this.startGame();
         });
     }
 
     this.setupFireworks();
 }
-
-
    // Update setupFireworks method
    setupFireworks() {
     const fireworksCanvas = document.createElement('canvas');
@@ -740,98 +820,81 @@ loadAudio(audio) {
     }
 
 // Update gameOver method
-async gameOver() {
+gameOver() {
     if (this.isWinning) return;
     
     this.isRunning = false;
     
-    // Switch back to promise-me music
-    await this.playWithFade(this.promiseMeMusic, this.f1Theme);
+    // Stop game loop
+    cancelAnimationFrame(this.animationFrameId);
 
-        const startScreen = document.getElementById('startScreen');
-        if (startScreen) {
-            startScreen.classList.remove('hidden');
-            startScreen.style.backgroundImage = `
-                linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)),
-                url('images/senna-helmet.jpg')`;
-            
-            startScreen.innerHTML = `
-                <div class="game-logo"></div>
-                <h1 class="game-title">Race Over</h1>
-                <div class="quote">
-                    Score: ${this.score}/${this.targetScore}<br>
-                    "Sometimes you have to go through the darkness 
-                    to get to the light." - Ayrton Senna
-                </div>
-                <button class="start-button" id="startButton">Try Again</button>
-            `;
-            
-            const newStartButton = document.getElementById('startButton');
-            if (newStartButton) {
-                newStartButton.addEventListener('click', () => {
-                    this.setupGame();
-                    this.startGame();
-                }, { once: true });
-            }
+    // Switch back to intro music
+    this.playWithFade(this.promiseMeMusic, this.f1Theme);
+
+    const startScreen = document.getElementById('startScreen');
+    if (startScreen) {
+        // Clean up any existing content
+        while (startScreen.firstChild) {
+            startScreen.firstChild.remove();
         }
-    }
 
-    async fadeOut(audio) {
-        if (!audio || audio.paused) return;
-
-        const fadeInterval = 50;
-        const steps = this.audioConfig.fadeTime / fadeInterval;
-        const volumeStep = audio.volume / steps;
-
-        return new Promise(resolve => {
-            const fade = setInterval(() => {
-                if (audio.volume > volumeStep) {
-                    audio.volume -= volumeStep;
-                } else {
-                    audio.pause();
-                    audio.currentTime = 0;
-                    audio.volume = this.audioConfig.volume;
-                    clearInterval(fade);
-                    resolve();
-                }
-            }, fadeInterval);
-        });
-    }
-
-    async fadeIn(audio) {
-        if (!audio) return;
-
-        audio.volume = 0;
-        await audio.play().catch(e => console.log('Audio play failed:', e));
-
-        const fadeInterval = 50;
-        const steps = this.audioConfig.fadeTime / fadeInterval;
-        const volumeStep = this.audioConfig.volume / steps;
-
-        return new Promise(resolve => {
-            const fade = setInterval(() => {
-                if (audio.volume < this.audioConfig.volume - volumeStep) {
-                    audio.volume += volumeStep;
-                } else {
-                    audio.volume = this.audioConfig.volume;
-                    clearInterval(fade);
-                    resolve();
-                }
-            }, fadeInterval);
-        });
-    }
-
-    async playWithFade(newTrack, currentTrack = null) {
-        if (currentTrack) {
-            await this.fadeOut(currentTrack);
+        // Show the screen
+        startScreen.classList.remove('hidden');
+        
+        // Set background with mobile-optimized styles
+        startScreen.style.cssText = `
+            background-image: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)),
+                            url('images/senna-helmet.jpg');
+            background-size: cover;
+            background-position: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: ${this.isMobile ? '10px' : '20px'};
+        `;
+        
+        startScreen.innerHTML = `
+            <div class="game-logo"></div>
+            <h1 class="game-title" style="font-size: ${this.isMobile ? '24px' : '32px'}">Race Over</h1>
+            <div class="quote" style="font-size: ${this.isMobile ? '14px' : '16px'}">
+                Score: ${this.score}/${this.targetScore}<br>
+                "Sometimes you have to go through the darkness 
+                to get to the light." - Ayrton Senna
+            </div>
+            <button class="start-button" id="startButton">Try Again</button>
+        `;
+        
+        const newStartButton = document.getElementById('startButton');
+        if (newStartButton) {
+            newStartButton.addEventListener('click', () => {
+                this.setupGame();
+                this.startGame();
+            }, { once: true });
         }
-        await this.fadeIn(newTrack);
-    }
 
-    spawnObstacle() {
-        return new Obstacle(this);
+        // Show mobile controls if needed
+        if (this.isMobile) {
+            const mobileControls = document.getElementById('mobileControls');
+            if (mobileControls) mobileControls.style.display = 'flex';
+        }
     }
 }
 
+// Add this new method for proper cleanup
+cleanup() {
+    cancelAnimationFrame(this.animationFrameId);
+    const fireworksCanvas = document.getElementById('fireworksCanvas');
+    if (fireworksCanvas) fireworksCanvas.remove();
+    const celebration = document.querySelector('.celebration-container');
+    if (celebration) celebration.remove();
+}
+}
+
 export default Game;
-    // ... [Continue with the rest of the methods from the previous Game.js]
