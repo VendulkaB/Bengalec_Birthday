@@ -614,14 +614,14 @@ async showVictory() {
     this.isWinning = true;
     this.isRunning = false;
 
-    // Stop game loop immediately
+    // Ensure game loop is stopped
     cancelAnimationFrame(this.animationFrameId);
 
-    // Clean up any existing celebration elements
+    // Clean up existing elements
     const existingCelebration = document.querySelector('.celebration-container');
     if (existingCelebration) existingCelebration.remove();
 
-    // Switch audio
+    // Handle audio transition
     await this.fadeOut(this.f1Theme);
     await new Promise(resolve => setTimeout(resolve, 500));
     await this.fadeIn(this.victoryMusic);
@@ -630,46 +630,55 @@ async showVictory() {
     const celebration = document.createElement('div');
     celebration.className = 'celebration-container';
 
-    // Corrected image paths relative to js folder
+    // Adjust styles for mobile
     celebration.style.cssText = `
-    background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)),
-                     url('images/senna-helmet.jpg');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 999;
-`;
+        background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)),
+                         url('images/senna-helmet.jpg');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 999;
+        -webkit-transform: translate3d(0,0,0);
+        transform: translate3d(0,0,0);
+        overflow: hidden;
+        touch-action: none;
+        -webkit-overflow-scrolling: none;
+    `;
 
-    // Create content container
+    // Create content container with iOS-specific adjustments
     const contentContainer = document.createElement('div');
     contentContainer.style.cssText = `
         position: relative;
         z-index: 1002;
         text-align: center;
-        padding: 20px;
+        padding: ${this.isMobile ? '15px' : '20px'};
         background: rgba(0, 0, 0, 0.6);
         border-radius: 15px;
         border: 2px solid #FFD700;
-        max-width: 90%;
+        max-width: ${this.isMobile ? '85%' : '90%'};
         margin: auto;
         backdrop-filter: blur(5px);
         -webkit-backdrop-filter: blur(5px);
+        touch-action: none;
+        -webkit-transform: translate3d(0,0,0);
     `;
 
-    // Corrected logo path relative to js folder
+    // Adjust content for mobile
     contentContainer.innerHTML = `
         <div class="game-logo" style="
-            width: min(150px, 30vw);
-            height: min(150px, 30vw);
-            margin: 0 auto 20px auto;
+            width: ${this.isMobile ? '100px' : 'min(150px, 30vw)'};
+            height: ${this.isMobile ? '100px' : 'min(150px, 30vw)'};
+            margin: 0 auto 15px auto;
             background-image: url('images/senna-logo.png');
             background-size: contain;
             background-repeat: no-repeat;
@@ -677,23 +686,23 @@ async showVictory() {
         "></div>
         <h1 class="celebration-title" style="
             color: #FFD700;
-            font-size: clamp(24px, 5vw, 36px);
-            margin: 20px 0;
+            font-size: ${this.isMobile ? '24px' : 'clamp(24px, 5vw, 36px)'};
+            margin: 15px 0;
             text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);">
             🏆 Champion 🏆
         </h1>
         <div class="celebration-text" style="
             color: #FFFFFF;
-            font-size: clamp(16px, 4vw, 24px);
-            margin: 20px 0;
+            font-size: ${this.isMobile ? '16px' : 'clamp(16px, 4vw, 24px)'};
+            margin: 15px 0;
             line-height: 1.5;">
             <p>Happy Birthday!</p>
             <p>Just like Senna, you've achieved greatness!</p>
             <p>Score: ${this.score}/${this.targetScore}</p>
         </div>
         <button class="start-button" id="celebrationButton" style="
-            padding: clamp(10px, 3vw, 15px) clamp(20px, 5vw, 40px);
-            font-size: clamp(16px, 4vw, 24px);
+            padding: ${this.isMobile ? '10px 20px' : 'clamp(10px, 3vw, 15px) clamp(20px, 5vw, 40px)'};
+            font-size: ${this.isMobile ? '18px' : 'clamp(16px, 4vw, 24px)'};
             background: linear-gradient(45deg, #FFD700, #FFA500);
             border: none;
             color: #000;
@@ -702,15 +711,17 @@ async showVictory() {
             text-transform: uppercase;
             letter-spacing: 2px;
             font-weight: bold;
-            margin-top: 20px;
-            transition: all 0.3s ease;">
+            margin-top: 15px;
+            transition: all 0.3s ease;
+            min-height: 44px;
+            min-width: 44px;">
             Race Again
         </button>
     `;
 
     celebration.appendChild(contentContainer);
 
-    // Setup fireworks canvas
+    // Setup fireworks with mobile optimization
     const fireworksCanvas = document.createElement('canvas');
     fireworksCanvas.id = 'fireworksCanvas';
     fireworksCanvas.style.cssText = `
@@ -721,82 +732,115 @@ async showVictory() {
         height: 100%;
         pointer-events: none;
         z-index: 1000;
+        touch-action: none;
+        -webkit-transform: translate3d(0,0,0);
     `;
     celebration.appendChild(fireworksCanvas);
     gameContainer.appendChild(celebration);
 
+    // Enhanced button handling for mobile
     const celebrationButton = document.getElementById('celebrationButton');
     if (celebrationButton) {
-        celebrationButton.addEventListener('click', async () => {
+        const handleClick = async () => {
+            // Remove event listeners first
+            celebrationButton.removeEventListener('click', handleClick);
+            celebrationButton.removeEventListener('touchend', handleClick);
+            
+            // Clean up
+            this.stopFireworks();
             celebration.remove();
             this.cleanup();
+            
+            // Reset game
             this.setupGame();
             await this.fadeOut(this.victoryMusic);
             this.f1Theme.currentTime = 0;
+            
+            // Start new game
             this.startGame();
+        };
+
+        celebrationButton.addEventListener('click', handleClick);
+        celebrationButton.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            handleClick();
         });
     }
 
     this.setupFireworks();
+
+    // Prevent scrolling on iOS
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    document.body.style.height = '100%';
 }
-   // Update setupFireworks method
-   setupFireworks() {
-    const fireworksCanvas = document.createElement('canvas');
-    fireworksCanvas.id = 'fireworksCanvas';
-    fireworksCanvas.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        z-index: 1001;
-    `;
-    document.querySelector('.celebration-container').appendChild(fireworksCanvas);
 
-        const fwCtx = fireworksCanvas.getContext('2d');
-        fireworksCanvas.width = fireworksCanvas.clientWidth;
-        fireworksCanvas.height = fireworksCanvas.clientHeight;
-
-        this.fireworks = [];
-        let animationFrameId;
-
-        const animateFireworks = () => {
-            if (!fwCtx) return;
-            
-            fwCtx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-            fwCtx.fillRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
-
-            if (Math.random() < 0.05) {
-                this.fireworks.push(new Firework(fireworksCanvas.width, fireworksCanvas.height));
-            }
-
-            this.fireworks = this.fireworks.filter(firework => {
-                firework.update();
-                firework.draw(fwCtx);
-                return firework.particles.length > 0 || !firework.exploded;
-            });
-
-            if (fireworksCanvas.parentNode) {
-                animationFrameId = requestAnimationFrame(animateFireworks);
-            }
-        };
-
-        animateFireworks();
-
-        const celebrationButton = document.getElementById('celebrationButton');
-        if (celebrationButton) {
-            celebrationButton.addEventListener('click', () => {
-                if (animationFrameId) {
-                    cancelAnimationFrame(animationFrameId);
-                }
-                fireworksCanvas.remove();
-                celebration.remove();
-                this.setupGame();
-                this.startGame();
-            });
-        }
+// Add this method to properly stop fireworks
+stopFireworks() {
+    if (this.fireworksAnimationId) {
+        cancelAnimationFrame(this.fireworksAnimationId);
     }
+    const fireworksCanvas = document.getElementById('fireworksCanvas');
+    if (fireworksCanvas) {
+        fireworksCanvas.remove();
+    }
+}
+
+// Update setupFireworks method for better mobile handling
+setupFireworks() {
+    const fireworksCanvas = document.getElementById('fireworksCanvas');
+    if (!fireworksCanvas) return;
+
+    const fwCtx = fireworksCanvas.getContext('2d');
+    fireworksCanvas.width = fireworksCanvas.clientWidth;
+    fireworksCanvas.height = fireworksCanvas.clientHeight;
+
+    this.fireworks = [];
+
+    const animateFireworks = () => {
+        if (!fwCtx || !fireworksCanvas.parentNode) return;
+        
+        fwCtx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        fwCtx.fillRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
+
+        if (Math.random() < (this.isMobile ? 0.03 : 0.05)) {
+            this.fireworks.push(new Firework(fireworksCanvas.width, fireworksCanvas.height));
+        }
+
+        this.fireworks = this.fireworks.filter(firework => {
+            firework.update();
+            firework.draw(fwCtx);
+            return firework.particles.length > 0 || !firework.exploded;
+        });
+
+        this.fireworksAnimationId = requestAnimationFrame(animateFireworks);
+    };
+
+    animateFireworks();
+}
+
+// Update cleanup method
+cleanup() {
+    cancelAnimationFrame(this.animationFrameId);
+    this.stopFireworks();
+    
+    const celebration = document.querySelector('.celebration-container');
+    if (celebration) {
+        celebration.remove();
+    }
+    
+    // Reset body styles
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+    document.body.style.height = '';
+    
+    // Reset game state
+    this.isWinning = false;
+    this.obstacles = [];
+    this.score = 0;
+}
 
     checkCollisions() {
         if (this.isWinning) return;
