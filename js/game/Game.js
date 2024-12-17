@@ -1,4 +1,3 @@
-// First add Firework and Particle classes at the top
 class Firework {
     constructor(canvasWidth, canvasHeight) {
         this.x = Math.random() * canvasWidth;
@@ -9,6 +8,7 @@ class Firework {
         this.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
         this.exploded = false;
     }
+
     update() {
         if (!this.exploded) {
             this.y -= this.speed;
@@ -20,12 +20,14 @@ class Firework {
             this.particles = this.particles.filter(particle => particle.alpha > 0);
         }
     }
+
     explode() {
         this.exploded = true;
         for (let i = 0; i < 50; i++) {
             this.particles.push(new Particle(this.x, this.y, this.color));
         }
     }
+
     draw(ctx) {
         if (!this.exploded) {
             ctx.fillStyle = this.color;
@@ -34,6 +36,7 @@ class Firework {
         this.particles.forEach(particle => particle.draw(ctx));
     }
 }
+
 class Particle {
     constructor(x, y, color) {
         this.x = x;
@@ -45,23 +48,26 @@ class Particle {
         this.vx = Math.cos(angle) * speed;
         this.vy = Math.sin(angle) * speed;
     }
+
     update() {
         this.x += this.vx;
         this.y += this.vy;
         this.vy += 0.1;
         this.alpha -= 0.01;
     }
+
     draw(ctx) {
         ctx.fillStyle = this.color.replace(')', `, ${this.alpha})`).replace('rgb', 'rgba');
         ctx.fillRect(this.x, this.y, 2, 2);
     }
 }
+
 import Player from './Player.js';
 import Obstacle from './Obstacle.js';
 
 const GAME_CONFIG = {
     TARGET_SCORE: 38,
-    BASE_GAME_SPEED: 1.2,
+    BASE_GAME_SPEED: 2.0,  // Increased from 1.2
     SPAWN_INTERVALS: {
         DESKTOP: 1200,
         MOBILE: 1400
@@ -69,7 +75,7 @@ const GAME_CONFIG = {
     DIFFICULTY_SCALING: {
         SPAWN_INTERVAL_REDUCTION: 15,
         MIN_SPAWN_INTERVAL: 600,
-        SPEED_SCALING_FACTOR: 0.025
+        SPEED_SCALING_FACTOR: 0.04  // Increased from 0.025
     }
 };
 
@@ -81,7 +87,7 @@ class Game {
         this.isWinning = false;
         this.hasPlayedIntro = false;
         this.lastFrameTime = null;
-        this.lastTime = null;
+        this.lastTime = performance.now();
         this.lastLogTime = null;
         this.player = null;
         this.obstacles = [];
@@ -97,15 +103,34 @@ class Game {
         this.setupControls();
         this.setupEventListeners();
         this.setupAudio();
+
+        // Initialize UI elements
+        this.updateUI();
+    }
+
+    // Update the updateUI method to use the corrected speed
+    updateUI() {
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const speedDisplay = document.getElementById('speedDisplay');
+        
+        if (scoreDisplay) {
+            scoreDisplay.textContent = `${this.score}/${this.targetScore}`;
+        }
+        if (speedDisplay) {
+            // Round the speed to whole numbers for display
+            speedDisplay.textContent = Math.floor(this.gameSpeed * 100);
+        }
     }
 
     setupCanvas() {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d', { alpha: false });
         this.resizeCanvas();
+        
         if (this.isMobile) {
             this.ctx.imageSmoothingEnabled = false;
         }
+        
         let resizeTimeout;
         window.addEventListener('resize', () => {
             if (resizeTimeout) clearTimeout(resizeTimeout);
@@ -126,7 +151,6 @@ class Game {
         this.canvas.height = height;
         this.scale = width / 800;
     
-        // Trigger redraw after resize
         if (this.isRunning) {
             this.draw();
         }
@@ -140,20 +164,23 @@ class Game {
         this.player = new Player(this);
         this.obstacles = [];
         this.score = 0;
-        this.targetScore = GAME_CONFIG.TARGET_SCORE;
         this.gameSpeed = GAME_CONFIG.BASE_GAME_SPEED;
         this.spawnTimer = 0;
         this.spawnInterval = this.isMobile ? GAME_CONFIG.SPAWN_INTERVALS.MOBILE : GAME_CONFIG.SPAWN_INTERVALS.DESKTOP;
         this.lastTime = performance.now();
+        this.updateUI();
     }
 
     setupControls() {
         this.isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     
         if (this.isTouchDevice) {
-            this.canvas.addEventListener('touchstart', this.handleTouchMove.bind(this), false);
-            this.canvas.addEventListener('touchmove', this.handleTouchMove.bind(this), false);
-            this.canvas.addEventListener('touchend', this.handleTouchEnd.bind(this), false);
+            this.canvas.addEventListener('touchstart', (e) => this.handleTouch(e), false);
+            this.canvas.addEventListener('touchmove', (e) => this.handleTouch(e), false);
+            this.canvas.addEventListener('touchend', () => {
+                this.player.moveLeft = false;
+                this.player.moveRight = false;
+            }, false);
         } else {
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'ArrowLeft') this.player.moveLeft = true;
@@ -165,8 +192,24 @@ class Game {
                 if (e.key === 'ArrowRight') this.player.moveRight = false;
             });
     
-            // Mouse control
             this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this), false);
+        }
+    }
+
+    handleTouch(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const rect = this.canvas.getBoundingClientRect();
+        const touchX = touch.clientX - rect.left;
+        const relativeX = touchX / rect.width * this.canvas.width;
+        
+        this.player.x = relativeX - this.player.width / 2;
+        
+        // Ensure player stays within bounds
+        if (this.player.x < 0) {
+            this.player.x = 0;
+        } else if (this.player.x + this.player.width > this.canvas.width) {
+            this.player.x = this.canvas.width - this.player.width;
         }
     }
     
@@ -177,7 +220,7 @@ class Game {
     
         // Calculate the player's position based on the mouse position
         const playerCenter = this.player.width / 2;
-        this.player.x = mouseX - playerCenter;
+        this.player.x = (mouseX / rect.width * canvasWidth) - playerCenter;
     
         // Ensure the player stays within the canvas boundaries
         if (this.player.x < 0) {
@@ -186,18 +229,7 @@ class Game {
             this.player.x = canvasWidth - this.player.width;
         }
     }
-    
-    handleTouchMove(e) {
-        e.preventDefault();
-        const touch = e.touches[0];
-        this.handleMouseMove(touch);
-    }
-    
-    handleTouchEnd(e) {
-        e.preventDefault();
-        this.player.moveLeft = false;
-        this.player.moveRight = false;
-    }
+
     setupEventListeners() {
         const startButton = document.getElementById('startButton');
         if (startButton) {
@@ -206,8 +238,6 @@ class Game {
                 this.startGame();
             });
         }
-
-        // Add other event listeners here if needed
     }
 
     setupAudio() {
@@ -217,28 +247,23 @@ class Game {
             fadeTime: 2000
         };
 
-        // Setup all audio tracks
         this.f1Theme = new Audio('sounds/f1-theme.mp3');
         this.racingMusic = new Audio('sounds/promise-me.mp3');
         this.victoryMusic = new Audio('sounds/legends-made.mp3');
 
-        // Configure volumes
         this.f1Theme.volume = 0.65;
         this.racingMusic.volume = 0.75;
         this.victoryMusic.volume = 0.8;
 
-        // Configure looping for background tracks
         this.f1Theme.loop = true;
         this.racingMusic.loop = true;
         this.victoryMusic.loop = true;
 
-        // Load all audio
         Promise.all([
             this.loadAudio(this.f1Theme),
             this.loadAudio(this.racingMusic),
             this.loadAudio(this.victoryMusic)
         ]).then(() => {
-            // Start F1 theme after user interaction
             document.addEventListener('click', () => {
                 if (!this.hasPlayedIntro) {
                     this.f1Theme.play().catch(e => console.log('Audio play failed:', e));
@@ -247,10 +272,8 @@ class Game {
             }, { once: true });
         });
 
-        // Setup audio controls
         this.setupAudioControls();
     }
-
     loadAudio(audio) {
         return new Promise((resolve, reject) => {
             audio.addEventListener('canplaythrough', resolve, { once: true });
@@ -279,7 +302,6 @@ class Game {
                 const baseVolume = e.target.value / 100;
                 this.audioConfig.volume = baseVolume;
 
-                // Adjust volumes for different tracks
                 this.f1Theme.volume = baseVolume * 0.65;
                 this.racingMusic.volume = baseVolume * 0.75;
                 this.victoryMusic.volume = baseVolume * 0.8;
@@ -293,25 +315,23 @@ class Game {
         this.lastFrameTime = performance.now();
         this.gameLoop(this.lastFrameTime);
 
-        // Hide the start screen
         const startScreen = document.getElementById('startScreen');
         if (startScreen) {
             startScreen.classList.add('hidden');
         }
-        // Stop victory music if it's playing
+
         if (this.victoryMusic) {
             this.victoryMusic.pause();
             this.victoryMusic.currentTime = 0;
         }
 
-        // Start racing music
         this.playWithFade(this.racingMusic, this.f1Theme);
     }
 
     gameLoop(timestamp) {
         if (!this.isRunning) return;
 
-        const deltaTime = timestamp - (this.lastFrameTime || timestamp);
+        const deltaTime = Math.min(timestamp - (this.lastFrameTime || timestamp), 50);
         this.lastFrameTime = timestamp;
 
         this.update(deltaTime);
@@ -320,11 +340,16 @@ class Game {
         requestAnimationFrame((time) => this.gameLoop(time));
     }
 
+      // Fix the speed calculation in the update method
+      // Update the speed calculation in the update method
     update(deltaTime) {
         if (!this.isRunning) return;
 
         this.player.update();
-        this.gameSpeed = GAME_CONFIG.BASE_GAME_SPEED + (this.score * GAME_CONFIG.DIFFICULTY_SCALING.SPEED_SCALING_FACTOR);
+        
+        // Updated speed calculation
+        this.gameSpeed = GAME_CONFIG.BASE_GAME_SPEED + 
+            (this.score * GAME_CONFIG.DIFFICULTY_SCALING.SPEED_SCALING_FACTOR);
 
         // Spawn obstacles
         this.spawnTimer += deltaTime;
@@ -337,9 +362,11 @@ class Game {
                 }
             }
             this.spawnTimer = 0;
-            this.spawnInterval = Math.max(GAME_CONFIG.DIFFICULTY_SCALING.MIN_SPAWN_INTERVAL, GAME_CONFIG.SPAWN_INTERVALS.DESKTOP - (this.score * GAME_CONFIG.DIFFICULTY_SCALING.SPAWN_INTERVAL_REDUCTION));
+            this.spawnInterval = Math.max(
+                GAME_CONFIG.DIFFICULTY_SCALING.MIN_SPAWN_INTERVAL,
+                this.spawnInterval - (this.score * GAME_CONFIG.DIFFICULTY_SCALING.SPAWN_INTERVAL_REDUCTION)
+            );
         }
-
         // Update obstacles and check score
         this.obstacles = this.obstacles.filter(obstacle => {
             const isOffscreen = obstacle.update();
@@ -348,7 +375,7 @@ class Game {
                 this.updateUI();
 
                 if (this.score >= this.targetScore && !this.isWinning) {
-                    this.showBirthdayCelebration();
+                    this.showVictory();
                 }
             }
             return !isOffscreen;
@@ -357,9 +384,18 @@ class Game {
         if (!this.isWinning) {
             this.checkCollisions();
         }
+
+        // Update UI with current speed
+        this.updateUI();
+
+        if (!this.isWinning) {
+            this.checkCollisions();
+        }
     }
 
     draw() {
+        if (!this.ctx) return;
+        
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
         this.drawRoad();
@@ -376,10 +412,13 @@ class Game {
         // Lane markings
         this.ctx.fillStyle = '#FFFFFF';
         const laneWidth = this.canvas.width / 3;
+        const currentTime = performance.now();
         
         for (let i = 1; i < 3; i++) {
             const x = laneWidth * i;
-            for (let y = -this.canvas.height + (this.lastTime * 0.1 % 50); y < this.canvas.height; y += 50) {
+            const offset = (currentTime * 0.1 % 50) * (this.gameSpeed / GAME_CONFIG.BASE_GAME_SPEED);
+            
+            for (let y = -this.canvas.height + offset; y < this.canvas.height; y += 50) {
                 this.ctx.fillRect(
                     x - 2 * this.scale,
                     y,
@@ -391,90 +430,118 @@ class Game {
     }
 
     drawUI() {
-        if (!this.isMobile) {
-            this.ctx.fillStyle = '#FFFFFF';
-            this.ctx.font = `${20 * this.scale}px Arial`;
-            this.ctx.fillText(`Speed: ${Math.floor(this.gameSpeed * 100)} km/h`, 20 * this.scale, 60 * this.scale);
-        }
+        // Remove the in-game speed display since we have it in the UI header
+        return;
     }
 
-    updateUI() {
-        const scoreDisplay = document.getElementById('scoreDisplay');
-        const speedDisplay = document.getElementById('speedDisplay');
-        
-        if (scoreDisplay) scoreDisplay.textContent = `${this.score}/${this.targetScore}`;
-        if (speedDisplay) speedDisplay.textContent = Math.floor(this.gameSpeed * 100);
-    }
+// Update the showVictory method
+async showVictory() {
+    this.isWinning = true;
+    this.isRunning = false;
 
-    async showBirthdayCelebration() {
-        this.isWinning = true;
-        this.isRunning = false;
+    await this.fadeOut(this.racingMusic);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    await this.fadeIn(this.victoryMusic);
 
-        // Switch to victory music with delay
-        await this.fadeOut(this.racingMusic);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        await this.fadeIn(this.victoryMusic);
+    const celebration = document.createElement('div');
+    celebration.className = 'celebration-container';
+    document.getElementById('gameContainer').appendChild(celebration);
 
-        const celebration = document.createElement('div');
-        celebration.style.cssText = `
+    const content = document.createElement('div');
+    content.className = 'celebration-content';
+    content.innerHTML = `
+        <div class="game-logo"></div>
+        <h1 class="celebration-title">🏆 Champion 🏆</h1>
+        <div class="celebration-text">
+            <p>Happy Birthday!</p>
+            <p>Just like Senna, you've achieved greatness!</p>
+            <p>Score: ${this.score}/${this.targetScore}</p>
+        </div>
+        <button class="start-button" id="celebrationButton">Race Again</button>
+    `;
+    celebration.appendChild(content);
+
+    // Add specific styles directly to ensure visibility
+    const styles = document.createElement('style');
+    styles.textContent = `
+        .celebration-container {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)),
-                        url('images/senna-bg.jpg');
-            background-size: cover;
-            background-position: center;
+            background: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85));
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 1000;
-            animation: fadeIn 1s ease-in;
-        `;
+        }
+        .celebration-content {
+            text-align: center;
+            padding: 20px;
+            z-index: 1002;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            border: 2px solid #FFD700;
+        }
+        .celebration-title {
+            color: #FFD700;
+            font-size: clamp(24px, 5vw, 36px);
+            margin: 20px 0;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        .celebration-text {
+            color: #FFFFFF;
+            font-size: clamp(16px, 4vw, 24px);
+            margin: 20px 0;
+            line-height: 1.5;
+        }
+        .celebration-text p {
+            margin: 10px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+    `;
+    document.head.appendChild(styles);
 
-        celebration.innerHTML = `
-            <div style="text-align: center; padding: 20px;">
-                <div class="game-logo"></div>
-                <h1 class="game-title" style="animation: scaleIn 1s ease-out; white-space: nowrap;">
-                    🏆&nbsp;Champion&nbsp;🏆
-                </h1>
-                <p style="color: #fff; font-size: 24px; margin: 20px 0; 
-                          animation: slideIn 1s ease-out;">
-                    Happy Birthday!<br>
-                    Just like Senna, you've achieved greatness!<br>
-                    Score: ${this.score}/${this.targetScore}
-                </p>
-                <button class="start-button" id="celebrationButton">
-                    Race Again
-                </button>
-            </div>
-        `;
+    const celebrationButton = document.getElementById('celebrationButton');
+    if (celebrationButton) {
+        celebrationButton.addEventListener('click', () => {
+            celebration.remove();
+            styles.remove();
+            this.setupGame();
+            this.startGame();
+        });
+    }
 
-        document.getElementById('gameContainer').appendChild(celebration);
+    this.setupFireworks();
+}
 
-        const fireworksCanvas = document.createElement('canvas');
-        fireworksCanvas.id = 'fireworksCanvas';
-        fireworksCanvas.style.cssText = `
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1001;
-        `;
-        document.getElementById('gameContainer').appendChild(fireworksCanvas);
+
+   // Update setupFireworks method
+   setupFireworks() {
+    const fireworksCanvas = document.createElement('canvas');
+    fireworksCanvas.id = 'fireworksCanvas';
+    fireworksCanvas.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1001;
+    `;
+    document.querySelector('.celebration-container').appendChild(fireworksCanvas);
 
         const fwCtx = fireworksCanvas.getContext('2d');
         fireworksCanvas.width = fireworksCanvas.clientWidth;
         fireworksCanvas.height = fireworksCanvas.clientHeight;
 
         this.fireworks = [];
+        let animationFrameId;
 
         const animateFireworks = () => {
-            fwCtx.clearRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
+            if (!fwCtx) return;
+            
             fwCtx.fillStyle = 'rgba(0, 0, 0, 0.2)';
             fwCtx.fillRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
 
@@ -482,12 +549,15 @@ class Game {
                 this.fireworks.push(new Firework(fireworksCanvas.width, fireworksCanvas.height));
             }
 
-            this.fireworks.forEach(firework => {
+            this.fireworks = this.fireworks.filter(firework => {
                 firework.update();
                 firework.draw(fwCtx);
+                return firework.particles.length > 0 || !firework.exploded;
             });
 
-            requestAnimationFrame(animateFireworks);
+            if (fireworksCanvas.parentNode) {
+                animationFrameId = requestAnimationFrame(animateFireworks);
+            }
         };
 
         animateFireworks();
@@ -495,8 +565,11 @@ class Game {
         const celebrationButton = document.getElementById('celebrationButton');
         if (celebrationButton) {
             celebrationButton.addEventListener('click', () => {
-                celebration.remove();
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                }
                 fireworksCanvas.remove();
+                celebration.remove();
                 this.setupGame();
                 this.startGame();
             });
@@ -504,6 +577,8 @@ class Game {
     }
 
     checkCollisions() {
+        if (this.isWinning) return;
+        
         for (let obstacle of this.obstacles) {
             if (this.detectCollision(this.player, obstacle)) {
                 this.gameOver();
@@ -513,43 +588,45 @@ class Game {
     }
 
     detectCollision(a, b) {
-        // Use more precise and performance-friendly collision detection
+        const margin = 5 * this.scale;
         return !(
-            a.x + a.width <= b.x ||
-            a.x >= b.x + b.width ||
-            a.y + a.height <= b.y ||
-            a.y >= b.y + b.height
+            (a.x + margin + a.width - margin * 2) <= b.x ||
+            (a.x + margin) >= (b.x + b.width - margin) ||
+            (a.y + margin + a.height - margin * 2) <= b.y ||
+            (a.y + margin) >= (b.y + b.height - margin)
         );
     }
 
     async gameOver() {
-        if (!this.isWinning) {
-            this.isRunning = false;
-            
-            // Switch back to F1 theme after crash
-            await this.playWithFade(this.f1Theme, this.racingMusic);
+        if (this.isWinning) return;
+        
+        this.isRunning = false;
+        await this.playWithFade(this.f1Theme, this.racingMusic);
 
-            const startScreen = document.getElementById('startScreen');
-            if (startScreen) {
-                startScreen.classList.remove('hidden');
-                startScreen.style.backgroundImage = `
-                    linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)),
-                    url('images/senna-helmet.jpg')`;
-                startScreen.innerHTML = `
-                    <div class="game-logo"></div>
-                    <h1 class="game-title">Race Over</h1>
-                    <div class="quote">
-                        Score: ${this.score}/${this.targetScore}<br>
-                        "Sometimes you have to go through the darkness 
-                        to get to the light." - Ayrton Senna
-                    </div>
-                    <button class="start-button" id="startButton">Try Again</button>
-                `;
-                
-                document.getElementById('startButton').addEventListener('click', () => {
+        const startScreen = document.getElementById('startScreen');
+        if (startScreen) {
+            startScreen.classList.remove('hidden');
+            startScreen.style.backgroundImage = `
+                linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)),
+                url('images/senna-helmet.jpg')`;
+            
+            startScreen.innerHTML = `
+                <div class="game-logo"></div>
+                <h1 class="game-title">Race Over</h1>
+                <div class="quote">
+                    Score: ${this.score}/${this.targetScore}<br>
+                    "Sometimes you have to go through the darkness 
+                    to get to the light." - Ayrton Senna
+                </div>
+                <button class="start-button" id="startButton">Try Again</button>
+            `;
+            
+            const newStartButton = document.getElementById('startButton');
+            if (newStartButton) {
+                newStartButton.addEventListener('click', () => {
                     this.setupGame();
                     this.startGame();
-                });
+                }, { once: true });
             }
         }
     }
@@ -580,7 +657,7 @@ class Game {
         if (!audio) return;
 
         audio.volume = 0;
-        audio.play().catch(e => console.log('Audio play failed:', e));
+        await audio.play().catch(e => console.log('Audio play failed:', e));
 
         const fadeInterval = 50;
         const steps = this.audioConfig.fadeTime / fadeInterval;
@@ -599,11 +676,6 @@ class Game {
         });
     }
 
-    /**
-     * Fades out the current audio track and fades in the new audio track.
-     * @param {Audio} newTrack - The new audio track to play.
-     * @param {Audio} [currentTrack=null] - The current audio track to fade out.
-     */
     async playWithFade(newTrack, currentTrack = null) {
         if (currentTrack) {
             await this.fadeOut(currentTrack);
@@ -612,11 +684,9 @@ class Game {
     }
 
     spawnObstacle() {
-        const obstacle = new Obstacle(this);
-        console.log('Obstacle created');
-        return obstacle;
+        return new Obstacle(this);
     }
 }
 
-// Ensure Game is exported
 export default Game;
+    // ... [Continue with the rest of the methods from the previous Game.js]
