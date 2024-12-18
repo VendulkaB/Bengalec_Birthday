@@ -641,12 +641,17 @@ async showVictory() {
     const existingCelebration = document.querySelector('.celebration-container');
     if (existingCelebration) existingCelebration.remove();
 
-    // Start creating celebration elements while audio is being handled
+    // Handle audio first - following the same pattern as other successful audio transitions
+    this.stopAllMusic();
+    this.victoryMusic.currentTime = 0;
+    this.victoryMusic.volume = this.audioConfig.volume * 0.8;
+
+    // Create and setup celebration screen
     const gameContainer = document.getElementById('gameContainer');
     const celebration = document.createElement('div');
     celebration.className = 'celebration-container';
 
-    // Set up the background immediately
+    // Mobile-optimized background setup
     celebration.style.cssText = `
         background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)),
                          url('images/senna-helmet.jpg');
@@ -662,29 +667,37 @@ async showVictory() {
         justify-content: center;
         align-items: center;
         z-index: 999;
+        overflow: hidden;
+        -webkit-tap-highlight-color: transparent;
     `;
 
-    // Create and append content container immediately
+    // Mobile-optimized content container
     const contentContainer = document.createElement('div');
     contentContainer.style.cssText = `
         position: relative;
         z-index: 1002;
         text-align: center;
-        padding: 20px;
+        padding: ${this.isMobile ? '15px' : '20px'};
         background: rgba(0, 0, 0, 0.6);
         border-radius: 15px;
         border: 2px solid #FFD700;
-        max-width: 90%;
+        width: ${this.isMobile ? '85%' : '90%'};
+        max-width: 600px;
         margin: auto;
         backdrop-filter: blur(5px);
         -webkit-backdrop-filter: blur(5px);
     `;
 
+    const logoSize = this.isMobile ? '80px' : 'min(150px, 30vw)';
+    const titleSize = this.isMobile ? '20px' : 'clamp(24px, 5vw, 36px)';
+    const textSize = this.isMobile ? '16px' : 'clamp(16px, 4vw, 24px)';
+    const buttonPadding = this.isMobile ? '12px 24px' : 'clamp(10px, 3vw, 15px) clamp(20px, 5vw, 40px)';
+
     contentContainer.innerHTML = `
         <div class="game-logo" style="
-            width: min(150px, 30vw);
-            height: min(150px, 30vw);
-            margin: 0 auto 20px auto;
+            width: ${logoSize};
+            height: ${logoSize};
+            margin: 0 auto 15px auto;
             background-image: url('images/senna-logo.png');
             background-size: contain;
             background-repeat: no-repeat;
@@ -692,23 +705,23 @@ async showVictory() {
         "></div>
         <h1 class="celebration-title" style="
             color: #FFD700;
-            font-size: clamp(24px, 5vw, 36px);
-            margin: 20px 0;
+            font-size: ${titleSize};
+            margin: 15px 0;
             text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);">
             🏆 Champion 🏆
         </h1>
         <div class="celebration-text" style="
             color: #FFFFFF;
-            font-size: clamp(16px, 4vw, 24px);
-            margin: 20px 0;
+            font-size: ${textSize};
+            margin: 15px 0;
             line-height: 1.5;">
             <p>Happy Birthday!</p>
             <p>Just like Senna, you've achieved greatness!</p>
             <p>Score: ${this.score}/${this.targetScore}</p>
         </div>
         <button class="start-button" id="celebrationButton" style="
-            padding: clamp(10px, 3vw, 15px) clamp(20px, 5vw, 40px);
-            font-size: clamp(16px, 4vw, 24px);
+            padding: ${buttonPadding};
+            font-size: ${this.isMobile ? '18px' : 'clamp(16px, 4vw, 24px)'};
             background: linear-gradient(45deg, #FFD700, #FFA500);
             border: none;
             color: #000;
@@ -717,8 +730,11 @@ async showVictory() {
             text-transform: uppercase;
             letter-spacing: 2px;
             font-weight: bold;
-            margin-top: 20px;
-            transition: all 0.3s ease;">
+            margin-top: 15px;
+            transition: all 0.3s ease;
+            min-height: 44px;
+            min-width: 120px;
+            -webkit-tap-highlight-color: transparent;">
             Race Again
         </button>
     `;
@@ -726,7 +742,7 @@ async showVictory() {
     celebration.appendChild(contentContainer);
     gameContainer.appendChild(celebration);
 
-    // Setup fireworks canvas immediately
+    // Setup fireworks with mobile optimization
     const fireworksCanvas = document.createElement('canvas');
     fireworksCanvas.id = 'fireworksCanvas';
     fireworksCanvas.style.cssText = `
@@ -740,24 +756,29 @@ async showVictory() {
     `;
     celebration.appendChild(fireworksCanvas);
 
-    // Handle audio in parallel with screen setup
-    const audioPromise = (async () => {
-        if (this.isMobile) {
-            this.stopAllMusic();
-            this.victoryMusic.currentTime = 0;
-            this.victoryMusic.volume = this.audioConfig.volume * 0.8;
+    // Play victory music using the same pattern as other successful audio transitions
+    try {
+        await this.victoryMusic.play();
+    } catch (e) {
+        console.log('Victory music initial play failed, setting up touch handler');
+        const playAudio = async () => {
             try {
                 await this.victoryMusic.play();
-            } catch (e) {
-                console.log('Mobile victory music play failed, will retry on interaction');
+                document.removeEventListener('touchstart', playAudio);
+            } catch (err) {
+                console.log('Victory music touch play failed:', err);
             }
-        } else {
-            await this.fadeOut(this.f1Theme);
-            await this.fadeIn(this.victoryMusic);
-        }
-    })();
+        };
+        document.addEventListener('touchstart', playAudio, { once: true });
 
-    // Set up button handlers
+        // Also try playing on button touch
+        const celebrationButton = document.getElementById('celebrationButton');
+        if (celebrationButton) {
+            celebrationButton.addEventListener('touchstart', playAudio, { once: true });
+        }
+    }
+
+    // Setup button handlers with better mobile support
     const celebrationButton = document.getElementById('celebrationButton');
     if (celebrationButton) {
         const handleRestart = async (e) => {
@@ -766,45 +787,57 @@ async showVictory() {
                 e.stopPropagation();
             }
 
+            // Clean up
             celebration.remove();
             this.cleanup();
             this.setupGame();
 
+            // Handle audio transition
+            this.stopAllMusic();
+            this.f1Theme.currentTime = 0;
+            this.f1Theme.volume = this.audioConfig.volume * 0.65;
+
             if (this.isMobile) {
-                this.stopAllMusic();
-                this.f1Theme.currentTime = 0;
-                this.f1Theme.volume = this.audioConfig.volume * 0.65;
                 try {
                     await this.f1Theme.play();
-                } catch (e) {
-                    console.log('Mobile audio retry needed');
+                } catch (err) {
+                    const playGameMusic = async () => {
+                        try {
+                            await this.f1Theme.play();
+                            document.removeEventListener('touchstart', playGameMusic);
+                        } catch (error) {
+                            console.log('Game music retry failed:', error);
+                        }
+                    };
+                    document.addEventListener('touchstart', playGameMusic, { once: true });
                 }
-            } else {
-                await this.fadeOut(this.victoryMusic);
-                this.f1Theme.currentTime = 0;
             }
 
             this.startGame();
         };
 
-        celebrationButton.addEventListener('click', handleRestart);
         if (this.isMobile) {
-            celebrationButton.addEventListener('touchend', handleRestart);
+            celebrationButton.addEventListener('touchend', handleRestart, { once: true });
+        } else {
+            celebrationButton.addEventListener('click', handleRestart, { once: true });
         }
     }
 
-    // Start fireworks animation
+    // Start fireworks
     this.setupFireworks();
 
     // Wait for audio handling to complete
     await audioPromise;
 
 
-    // Prevent scrolling on iOS
-    document.body.style.overflow = 'hidden';
-    document.body.style.position = 'fixed';
-    document.body.style.width = '100%';
-    document.body.style.height = '100%';
+    // Prevent unwanted mobile behaviors
+    if (this.isMobile) {
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+        document.body.style.height = '100%';
+        document.body.style.touchAction = 'none';
+    }
 }
 
 // Add this method to properly stop fireworks
