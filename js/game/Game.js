@@ -274,7 +274,27 @@ class Game {
         this.promiseMeMusic.loop = true;
         this.f1Theme.loop = true;
         this.victoryMusic.loop = true;
-
+        
+        if (this.isMobile) {
+            // Set up a global touch handler for iOS
+            const initialTouchHandler = async () => {
+                try {
+                    // Try to initialize audio context if needed
+                    if (window.AudioContext || window.webkitAudioContext) {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        await audioContext.resume();
+                    }
+                    
+                    // Remove the handler once successful
+                    document.removeEventListener('touchstart', initialTouchHandler);
+                } catch (e) {
+                    console.log('iOS audio context initialization failed:', e);
+                }
+            };
+            
+            document.addEventListener('touchstart', initialTouchHandler, { once: true });
+        }
+    
         // Try to play intro music immediately for desktop
         if (!this.isMobile) {
             this.playIntroMusic();
@@ -621,27 +641,12 @@ async showVictory() {
     const existingCelebration = document.querySelector('.celebration-container');
     if (existingCelebration) existingCelebration.remove();
 
-    // Handle audio based on platform
-    if (this.isMobile) {
-        this.stopAllMusic();
-        this.victoryMusic.currentTime = 0;
-        this.victoryMusic.volume = this.audioConfig.volume * 0.8;
-        try {
-            await this.victoryMusic.play();
-        } catch (e) {
-            console.log('Mobile victory music play failed, retrying on interaction');
-        }
-    } else {
-        await this.fadeOut(this.f1Theme);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        await this.fadeIn(this.victoryMusic);
-    }
-
+    // Start creating celebration elements while audio is being handled
     const gameContainer = document.getElementById('gameContainer');
     const celebration = document.createElement('div');
     celebration.className = 'celebration-container';
 
-    // Restore working background setup
+    // Set up the background immediately
     celebration.style.cssText = `
         background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)),
                          url('images/senna-helmet.jpg');
@@ -659,7 +664,7 @@ async showVictory() {
         z-index: 999;
     `;
 
-    // Create content container
+    // Create and append content container immediately
     const contentContainer = document.createElement('div');
     contentContainer.style.cssText = `
         position: relative;
@@ -721,7 +726,7 @@ async showVictory() {
     celebration.appendChild(contentContainer);
     gameContainer.appendChild(celebration);
 
-    // Setup fireworks canvas
+    // Setup fireworks canvas immediately
     const fireworksCanvas = document.createElement('canvas');
     fireworksCanvas.id = 'fireworksCanvas';
     fireworksCanvas.style.cssText = `
@@ -735,7 +740,24 @@ async showVictory() {
     `;
     celebration.appendChild(fireworksCanvas);
 
-    // Handle button click
+    // Handle audio in parallel with screen setup
+    const audioPromise = (async () => {
+        if (this.isMobile) {
+            this.stopAllMusic();
+            this.victoryMusic.currentTime = 0;
+            this.victoryMusic.volume = this.audioConfig.volume * 0.8;
+            try {
+                await this.victoryMusic.play();
+            } catch (e) {
+                console.log('Mobile victory music play failed, will retry on interaction');
+            }
+        } else {
+            await this.fadeOut(this.f1Theme);
+            await this.fadeIn(this.victoryMusic);
+        }
+    })();
+
+    // Set up button handlers
     const celebrationButton = document.getElementById('celebrationButton');
     if (celebrationButton) {
         const handleRestart = async (e) => {
@@ -752,6 +774,11 @@ async showVictory() {
                 this.stopAllMusic();
                 this.f1Theme.currentTime = 0;
                 this.f1Theme.volume = this.audioConfig.volume * 0.65;
+                try {
+                    await this.f1Theme.play();
+                } catch (e) {
+                    console.log('Mobile audio retry needed');
+                }
             } else {
                 await this.fadeOut(this.victoryMusic);
                 this.f1Theme.currentTime = 0;
@@ -766,7 +793,12 @@ async showVictory() {
         }
     }
 
+    // Start fireworks animation
     this.setupFireworks();
+
+    // Wait for audio handling to complete
+    await audioPromise;
+
 
     // Prevent scrolling on iOS
     document.body.style.overflow = 'hidden';
